@@ -62,22 +62,32 @@ Generated from a BAM file of reads mapped to the reference fasta file, using the
 	GenomeCoverageBed -d -ibam BAM > BED
 Formatted as chromosome	position	coverage:
 >Chr1	1	0
+
 >Chr1	2	1
+
 >Chr1	3	1
+
 >Chr1	4	2
+
 
 ## Duplications
 A bed file of known (or simulated) duplications, with the number of copies per chromosome and the frequency of the duplication in the sampled data (e.g. the number of chromosomes with this duplication/ the total number of chromosomes):
 >Chr1	1000	1344	dup	3	1.0
+
 >Chr1	2455	6700	dup	2	0.5
+
 >Chr1	34501	36119	dup	2	1.0
+
 >Chr1	45117	48932	dup	4	0.5
 
 ## Deletions
 A bed file of known (or simulated) deletions, with the number of copies per chromosome and the frequency of the deletion in the sampled data (e.g. the number of chromosomes with this deletion/ the total number of chromosomes):
 >Chr1	1000	1344	del	0	1.0
+
 >Chr1	2455	6700	del	0	0.5
+
 >Chr1	34501	36119	del	0	1.0
+
 >Chr1	45117	48932	del	0	0.5
 
 ## Fvec files
