@@ -48,9 +48,13 @@ Summarizes the coverage of each chromosome in the genomeCoverageBed file.
 ## Fasta
 The reference sequences for mapping and for generating training files, in the following format:
 >\>Chr1
+
 aagagcctatatca
+
 \>Chr2
+
 aagagcctatatca
+
 
 ## Coverage file
 Generated from a BAM file of reads mapped to the reference fasta file, using the command:
