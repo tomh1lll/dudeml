@@ -49,11 +49,11 @@ Summarizes the coverage of each chromosome in the genomeCoverageBed file.
 The reference sequences for mapping and for generating training files, in the following format:
 >\>Chr1
 
-aagagcctatatca
+>aagagcctatatca
 
-\>Chr2
+>\>Chr2
 
-aagagcctatatca
+>aagagcctatatca
 
 
 ## Coverage file
