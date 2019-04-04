@@ -101,7 +101,12 @@ A type of bed file, containing information on CNVs and copy number if a training
 # 4. A simple walkthrough
 ## A. Simulate training data
 
-We first downloaded the melanogaster reference genome and masked any repeats on the chromosome. Following that, we simulated CNVs for a homozygous individual, requiring 1 set of chromosomes to be generated. Its important that the training data is as similar as possible to the sample being tested, so attempt to generate a file with similar coverage as your sample with a similar number of chromosomes (e.g. 2 for a heterozygote). The only files that need keeping after the chromosomes are simulated are the total files and del.1.bed and dup.1.bed, which contains the information about the simulated CNVs.
+We first downloaded the melanogaster reference genome and masked any repeats on the chromosome.
+* [D. melanogaster genome](https://bit.ly/2K5O2Ft)
+* [Drosophila repeats](https://www.girinst.org/repbase/update/browse.php?type=All&format=FASTA&autonomous=on&division=all&letter=A)
+* [RepeatMasker](http://www.repeatmasker.org)
+
+Following that, we simulated CNVs for a homozygous individual, requiring 1 set of chromosomes to be generated. Its important that the training data is as similar as possible to the sample being tested, so attempt to generate a file with similar coverage as your sample with a similar number of chromosomes (e.g. 2 for a heterozygote). The only files that need keeping after the chromosomes are simulated are the total files and del.1.bed and dup.1.bed, which contains the information about the simulated CNVs.
 
     repeatmasker -pa 4 -gff -gccalc -s -lib repbase.fa fasta/Dmel_iso1.fa
     bwa index fasta/Dmel_iso1.fa.masked
