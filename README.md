@@ -1,22 +1,24 @@
 # dudeML
-detection of duplications and deletions using machine learning. Note this tool works on most read data mapped to reference genome e.g. single-end short reads or MinION data, though all examples provided here use 100bp paired end reads.
+A python script for the detection of duplications and deletions using machine learning. Note this tool works on most read data mapped to reference genome e.g. single-end short reads or MinION data, though all examples provided here use 100bp paired end reads.
 
 # 1. Requirements
-
+A number of programs are required to install. A majority of these can be installed via brew, apt, pip or conda.
 ## Python-based:
 * Python3
 * pandas
 * numpy
 * scikit-learn
+* Biopython
 ## External
 * bedtools
 * short-read simulator (e.g. wgsim)
 * short-read aligner (e.g. BWA)
 * short-read parser (e.g. SAMtools)
 ## Modifications
-Within the script, the path for bedtools and wgsim need to be set. If both of these tools are within the path, they can be left as they are.
+Within the script, the directory for bedtools and wgsim need to be set. If both of these tools are within the path, they can be left as they are.
 
 # 2. Functions
+Subfunctions of the dudeML script, each function provides a specific role and requires differing inputs (described by running the help function of the tool).
 1. **winStat**
 Finds the average coverage of a window in the chromosome, relative to the average chromosome coverage.
 2. **fvecSample**
@@ -55,11 +57,13 @@ The reference sequences for mapping and for generating training files, in the fo
 
 >aagagcctatatca
 
+## BAM files
+A binary file containing short reads mapped to a repeat masked reference genome, used as input for genomeCoverageBed.
 
 ## Coverage file
 Generated from a BAM file of reads mapped to the reference fasta file, using the command:
 
-	GenomeCoverageBed -d -ibam BAM > BED
+	genomeCoverageBed -d -ibam BAM > BED
 Formatted as chromosome	position	coverage:
 >Chr1	1	0
 
@@ -97,7 +101,7 @@ A type of bed file, containing information on CNVs and copy number if a training
 # 4. A simple walkthrough
 ## A. Simulate training data
 
-We first downloaded the melanogaster reference genome and masked any repeats on the chromosome, before extracting chromosome 2L to use as a base for a training set. Following that, we simulated CNVs for a homozygous individual, requiring 1 set of chromosomes to be generated. Its important that the training data is as similar as possible to the sample being tested, so attempt to generate a file with similar coverage as your sample with a similar number of chromosomes (e.g. 2 for a heterozygote). The only files that need keeping after the chromosomes are simulated are the total files and del.1.bed and dup.1.bed, which contains the information about the simulated CNVs.
+We first downloaded the melanogaster reference genome and masked any repeats on the chromosome. Following that, we simulated CNVs for a homozygous individual, requiring 1 set of chromosomes to be generated. Its important that the training data is as similar as possible to the sample being tested, so attempt to generate a file with similar coverage as your sample with a similar number of chromosomes (e.g. 2 for a heterozygote). The only files that need keeping after the chromosomes are simulated are the total files and del.1.bed and dup.1.bed, which contains the information about the simulated CNVs.
 
     repeatmasker -pa 4 -gff -gccalc -s -lib repbase.fa fasta/Dmel_iso1.fa
     bwa index fasta/Dmel_iso1.fa.masked
@@ -111,11 +115,11 @@ We first downloaded the melanogaster reference genome and masked any repeats on 
 
 
 ## B. Estimating coverage in training and test data
-  We next simulated reads using WGSIM within dudeML and following mapping, used bedtools to calculate coverage per site, we then used a custom python script to find the mean coverage of each chromosome to find the relative coverages of each window. In this case a homozygote was simulated.
+  We next simulated reads for the custom chromosomes containing CNVs using WGSIM within dudeML and following mapping, used bedtools to calculate coverage per site, we then used a custom python script to find the mean coverage of each chromosome to find the relative coverages of each window. In this case a homozygote was simulated.
   
     for i in train test
     do
-    python3 scripts/dudeML.py simReads -fasta Dmel_iso1.fa.masked -cov 20 -d ${i}_sim -RL 100 -id ${j}
+    python3 scripts/dudeML.py simReads -fasta Dmel_iso1.fa.masked -cov 20 -d ${i}_sim -RL 100 -id ${i}
     bwa mem -t 4 Dmel_iso1.fa.masked ${i}_sim/1_20_1.fq ${i}_sim/1_20_2.fq | samtools view -Shb - | samtools sort - > ${i}_sim/total.bam
     genomeCoverageBed -d -ibam ${i}_sim/total.bam > ${i}_sim/total.bed
     python scripts/dudeML.py winStat -i${i}_sim/total.bed -o ${i}_sim/total_50.bed -w 50 -s 50
@@ -125,7 +129,7 @@ We first downloaded the melanogaster reference genome and masked any repeats on 
   We then removed repetitive regions, reformatted the data to show the relative coverage of the focal window and the 5 windows on each side. We also prepared the data to filter and extract the regions with known duplications or deletions in training the file. We also labelled CNVs in the test dataset for comparison later.
 
 	python3 scripts/dudeML.py fvecTrain -i train_sim/total_50.bed -o train_sim/total_50train.bed -w 50 -TE Dmel_iso1.gff -dups train_sim/dup.1.bed -dels train_sim/del.1.bed  -windows 5
-	python3 scripts/dudeML.py fvecSample -i test_sim/total_50.bed -w 50 -o test_sim/total_50sample.bed -id test_sim-TE Dmel_iso1.gff -windows 5
+	python3 scripts/dudeML.py fvecSample -i test_sim/total_50.bed -w 50 -o test_sim/total_50sample.bed -id test_sim -TE Dmel_iso1.gff -windows 5
 
 ## D. Predicting CNVs using the generated files.  
 Following this, you can create a classifier from one of the training features vector files generated and test out predictions of CNVs in the other file.
