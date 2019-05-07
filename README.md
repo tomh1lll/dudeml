@@ -115,7 +115,7 @@ Following that, we simulated CNVs for a homozygous individual, requiring 1 set o
     do
     mkdir ${i}_sim
     python3 scripts/dudeML.py simCNV -fasta Dmel_iso1.fa.masked -CNV 50 -d ${i}_sim -N 1
-    python3 scripts/dudeML.py simChr -fasta Dmel_iso1.fa.masked -TE Dmel_iso1.gff -cnvBed ${i}_sim/total.1.bed -d ${i}_sim -id 1
+    python3 scripts/dudeML.py simChr -fasta Dmel_iso1.fa -cnvBed ${i}_sim/total.1.bed -d ${i}_sim -id 1
     done
 
 
@@ -124,7 +124,7 @@ Following that, we simulated CNVs for a homozygous individual, requiring 1 set o
   
     for i in train test
     do
-    python3 scripts/dudeML.py simReads -fasta Dmel_iso1.fa.masked -cov 20 -d ${i}_sim -RL 100 -id 1
+    python3 scripts/dudeML.py simReads -fasta Dmel_iso1.fa -cov 20 -d ${i}_sim -RL 100 -id 1
     bwa mem -t 4 Dmel_iso1.fa.masked ${i}_sim/1_20_1.fq ${i}_sim/1_20_2.fq | samtools view -Shb - | samtools sort - > ${i}_sim/total.bam
     genomeCoverageBed -d -ibam ${i}_sim/total.bam > ${i}_sim/total.bed
     python scripts/dudeML.py winStat -i${i}_sim/total.bed -o ${i}_sim/total_50.bed -w 50 -s 50
