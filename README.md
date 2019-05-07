@@ -113,8 +113,8 @@ Following that, we simulated CNVs for a homozygous individual, requiring 1 set o
     
     for i in train test
     do
-    mkdir ${i}_het
-    python3 scripts/dudeML.py simCNV -fasta Dmel_iso1.fa.masked -cnvCount 10000 -d ${i}_sim -N 1
+    mkdir ${i}_sim
+    python3 scripts/dudeML.py simCNV -fasta Dmel_iso1.fa.masked -CNV 50 -d ${i}_sim -N 1
     python3 scripts/dudeML.py simChr -fasta Dmel_iso1.fa.masked -TE Dmel_iso1.gff -cnvBed ${i}_sim/total.1.bed -d ${i}_sim -id 1
     done
 
