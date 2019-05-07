@@ -100,6 +100,80 @@ A type of bed file, containing information on CNVs and copy number if a training
 
 # 4. A simple walkthrough
 ## A. Simulate training data
+We used the provided DiNV virus genome and repeat locations.
+Following that, we simulated CNVs for a homozygous individual, requiring 1 set of chromosomes to be generated. Its important that the training data is as similar as possible to the sample being tested, so attempt to generate a file with similar coverage as your sample with a similar number of chromosomes (e.g. 2 for a heterozygote). The only files that need keeping after the chromosomes are simulated are the total files and del.1.bed and dup.1.bed, which contains the information about the simulated CNVs.
+
+    maskFastaFromBed -fi DiNV_CH01M.fa -bed DiNV.sat.fa -fo DiNV_CH01M.fa
+ 
+    for i in train test
+    do
+    mkdir ${i}_sim
+    python3 scripts/dudeML.py simCNV -fasta DiNV_CH01M.fa -CNV 50 -d ${i}_sim -N 1
+    python3 scripts/dudeML.py simChr -fasta DiNV_CH01M.fa -cnvBed ${i}_sim/total.1.bed -d ${i}_sim -id 1
+    done
+
+## B. Estimating coverage in training and test data
+  We next simulated reads for the custom chromosomes containing CNVs using WGSIM within dudeML and following mapping, used bedtools to calculate coverage per site, we then used a custom python script to find the mean coverage of each chromosome to find the relative coverages of each window. In this case a homozygote was simulated.
+  
+    for i in train test
+    do
+    python3 scripts/dudeML.py simReads -fasta DiNV_CH01M.fa -cov 20 -d ${i}_sim -RL 100 -id 1
+    bwa mem -t 4 DiNV_CH01M.fa.masked ${i}_sim/1_20_1.fq ${i}_sim/1_20_2.fq | samtools view -Shb - | samtools sort - > ${i}_sim/total.bam
+    genomeCoverageBed -d -ibam ${i}_sim/total.bam > ${i}_sim/total.bed
+    python scripts/dudeML.py winStat -i${i}_sim/total.bed -o ${i}_sim/total_50.bed -w 50 -s 50
+    done
+
+## C. Reformatting sample and training datasets.    
+  We then removed repetitive regions, reformatted the data to show the relative coverage of the focal window and the 5 windows on each side. We also prepared the data to filter and extract the regions with known duplications or deletions in training the file. We also labelled CNVs in the test dataset for comparison later. As repetitive regions can be tricky to deal with, we ignored windows with more than 50% of the window masked as an (-c 0.5).
+
+	python3 scripts/dudeML.py fvecTrain -i train_sim/total_50.bed -o train_sim/total_50train.bed -w 50 -TE Dmel_iso1.gff -dups train_sim/dup.1.bed -dels train_sim/del.1.bed  -windows 5 -c 0.5
+	python3 scripts/dudeML.py fvecSample -i test_sim/total_50.bed -w 50 -o test_sim/total_50sample.bed -id test_sim -TE Dmel_iso1.gff -windows 5 -c 0.5
+
+## D. Predicting CNVs using the generated files.  
+Following this, you can create a classifier from one of the training features vector files generated and test out predictions of CNVs in the other file.
+
+	python3 scripts/dudeML.py classify -i train_sim/total_50train.bed -o train_sim/total_50train.sav
+	python3 scripts/dudeML.py predict -i test_sim/total_50sample.bed -t train_sim/total_50train.sav -o test_sim/total_50pred.bed -windows 5
+
+Alternatively, if multiple training files have been generated, these can be used to bootstrap the predicted CNVs, allowing you to take a consensus estimation of CNVs (much more conservative). In this case, the training file is set as a directory containing the training files.
+
+    for i in {0..99}
+    do
+    python3 scripts/dudeML.py classify -i training/train_${i}.bed -o training/train_${i}.sav
+    done
+    
+	python3 scripts/dudeML.py predict -i test_het/total_50sample.bed -t training/ -o test_het/total_50pred_bootstrap.bed -windows 5
+
+## E. Using real data in dudeML
+Real data with known structural variants can be used as a training set using the following pipeline.
+
+	genomeCoverageBed -d -ibam knownCNV.bam > knownCNV.bed
+	
+	python dudeML.py winStat -i knownCNV.bed -o knownCNV_50.bed -w 50
+	python3 dudeML.py fvecTrain -i knownCNV_100.bed -o knownCNV_50.bed -w 50 -TE repeats.gff -dups knownDUP.bed -dels knownDEL.bed -c 0.5
+
+Real data can also be used as the test sample to identify unknown CNVs.
+
+	genomeCoverageBed -d -ibam unknownCNV.bam > unknownCNV.bed
+	
+	python dudeML.py winStat -i unknownCNV.bed -o unknownCNV_50.bed -w 50
+	python3 dudeML.py fvecSample -i unknownCNV_50.bed -o unknownCNV_50_sample.bed -w 50 -TE repeats.gff -c 0.5
+
+The deletions and duplications bedfile should have 6 columns, showing the chromosome, start, end, type of CNV, frequency and number of copies of the CNV.
+	
+	2L  28779  30880  dup  0.5 2
+	2L  41020  42111  dup  1.0 2
+	2L  42277  42668  dup  0.5 2
+	2L  55715  55717  dup  1.0 9
+	2L  61325  61881  dup  1.0 2
+	2L  69942  70335  dup  1.0 6
+	2L  70571  72017  dup  1.0 5
+
+Then the generated training and test sets can be used to find CNVs.
+	
+	python3 dudeML.py predict -i unknownCNV_50_sample.bed -t knownCNV_50_train.bed -o unknownCNV_50_pred.bed
+
+## F. The first few steps using Drosophila melanogaster data.
 
 We first downloaded the melanogaster reference genome and masked any repeats on the chromosome.
 * [D. melanogaster genome](https://bit.ly/2K5O2Ft)
@@ -118,8 +192,6 @@ Following that, we simulated CNVs for a homozygous individual, requiring 1 set o
     python3 scripts/dudeML.py simChr -fasta Dmel_iso1.fa -cnvBed ${i}_sim/total.1.bed -d ${i}_sim -id 1
     done
 
-
-## B. Estimating coverage in training and test data
   We next simulated reads for the custom chromosomes containing CNVs using WGSIM within dudeML and following mapping, used bedtools to calculate coverage per site, we then used a custom python script to find the mean coverage of each chromosome to find the relative coverages of each window. In this case a homozygote was simulated.
   
     for i in train test
@@ -130,52 +202,4 @@ Following that, we simulated CNVs for a homozygous individual, requiring 1 set o
     python scripts/dudeML.py winStat -i${i}_sim/total.bed -o ${i}_sim/total_50.bed -w 50 -s 50
     done
 
-## C. Reformatting sample and training datasets.    
-  We then removed repetitive regions, reformatted the data to show the relative coverage of the focal window and the 5 windows on each side. We also prepared the data to filter and extract the regions with known duplications or deletions in training the file. We also labelled CNVs in the test dataset for comparison later. As repetitive regions can be tricky to deal with, we ignored windows with more than 50% of the window masked as an (-c 0.5).
 
-	python3 scripts/dudeML.py fvecTrain -i train_sim/total_50.bed -o train_sim/total_50train.bed -w 50 -TE Dmel_iso1.gff -dups train_sim/dup.1.bed -dels train_sim/del.1.bed  -windows 5 -c 0.5
-	python3 scripts/dudeML.py fvecSample -i test_sim/total_50.bed -w 50 -o test_sim/total_50sample.bed -id test_sim -TE Dmel_iso1.gff -windows 5 -c 0.5
-
-## D. Predicting CNVs using the generated files.  
-Following this, you can create a classifier from one of the training features vector files generated and test out predictions of CNVs in the other file.
-
-	python3 scripts/dudeML.py classify -i test_het/train_het/total_50train.bed -o train_het/total_50train.sav
-	python3 scripts/dudeML.py predict -i test_het/total_50sample.bed -t train_het/total_50train.sav -o test_het/total_50pred.bed -windows 5
-
-Alternatively, if multiple training files have been generated, these can be used to bootstrap the predicted CNVs, allowing you to take a consensus estimation of CNVs (much more conservative). In this case, the training file is set as a directory containing the training files.
-
-    for i in {0..99}
-    do
-    python3 scripts/dudeML.py classify -i training/train_${i}.bed -o training/train_${i}.sav
-    done
-    
-	python3 scripts/dudeML.py predict -i test_het/total_50sample.bed -t training/ -o test_het/total_50pred_bootstrap.bed -windows 5
-
-## E. Using real data in dudeML
-Real data with known structural variants can be used as a training set using the following pipeline.
-
-	genomeCoverageBed -d -ibam knownCNV.bam > knownCNV.bed
-	
-	python dudeML.py winStat -i knownCNV.bed -o knownCNV_50.bed -w 50
-	python3 dudeML.py fvecTrain -i knownCNV_100.bed -o knownCNV_50.bed -w 50 -TE repeats.gff -dups knownDUP.bed -dels knownDEL.bed
-
-Real data can also be used as the test sample to identify unknown CNVs.
-
-	genomeCoverageBed -d -ibam unknownCNV.bam > unknownCNV.bed
-	
-	python dudeML.py winStat -i unknownCNV.bed -o unknownCNV_50.bed -w 50
-	python3 dudeML.py fvecSample -i unknownCNV_50.bed -o unknownCNV_50_sample.bed -w 50 -TE repeats.gff
-
-The deletions and duplications bedfile should have 6 columns, showing the chromosome, start, end, type of CNV, frequency and number of copies of the CNV.
-	
-	2L  28779  30880  dup  0.5 2
-	2L  41020  42111  dup  1.0 2
-	2L  42277  42668  dup  0.5 2
-	2L  55715  55717  dup  1.0 9
-	2L  61325  61881  dup  1.0 2
-	2L  69942  70335  dup  1.0 6
-	2L  70571  72017  dup  1.0 5
-
-Then the generated training and test sets can be used to find CNVs.
-	
-	python3 dudeML.py predict -i unknownCNV_50_sample.bed -t knownCNV_50_train.bed -o unknownCNV_50_pred.bed
