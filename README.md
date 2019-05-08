@@ -14,6 +14,14 @@ A number of programs are required to install. A majority of these can be install
 * short-read simulator (e.g. wgsim)
 * short-read aligner (e.g. BWA)
 * short-read parser (e.g. SAMtools)
+
+this can be done via:
+
+	conda create -n dudeml python=3.7 anaconda
+	source activate dudeml
+	conda install -n dudeml pandas numpy scikit-learn biopython
+	conda install -n dudeml wgsim bwa samtools bedtools
+	
 ## Modifications
 Within the script, the directory for bedtools and wgsim need to be set. If both of these tools are within the path, they can be left as they are.
 
