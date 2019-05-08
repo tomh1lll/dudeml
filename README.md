@@ -138,7 +138,7 @@ Following this, you can create a classifier from one of the training features ve
 
 Alternatively, if multiple training files have been generated, these can be used to bootstrap the predicted CNVs, allowing you to take a consensus estimation of CNVs (much more conservative). In this case, the training file is set as a directory containing the training files.
     
-    for i in 0
+    for i in {0..99}
     do
     mkdir train_sim/rep_${i}
     python3 scripts/dudeML.py simCNV -fasta DiNV_CH01M.fa -CNV 50 -d train_sim/rep_${i} -N 1 -c 0.5
@@ -156,13 +156,8 @@ Alternatively, if multiple training files have been generated, these can be used
     python3 scripts/dudeML.py classify -i train_sim/rep_${i}/train_${i}.bed -o train_sim/training/train_${i}.sav
     rm train_sim/rep_${i}/train_${i}.bed
     done
-
-    for i in {0..99}
-    do
-    python3 scripts/dudeML.py classify -i training/train_${i}.bed -o training/train_${i}.sav
-    done
     
-	python3 scripts/dudeML.py predict -i test_het/total_50sample.bed -t training/ -o test_het/total_50pred_bootstrap.bed
+	python3 scripts/dudeML.py predict -i test_sim/total_50sample.bed -t train_sim/training/ -o test_sim/total_50pred_bootstrap.bed
 
 ## E. Using real data in dudeML
 Real data with known structural variants can be used as a training set using the following pipeline.
