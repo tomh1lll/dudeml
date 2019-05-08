@@ -103,7 +103,7 @@ A type of bed file, containing information on CNVs and copy number if a training
 We used the provided DiNV virus genome and repeat locations.
 Following that, we simulated CNVs for a homozygous individual, requiring 1 set of chromosomes to be generated. Its important that the training data is as similar as possible to the sample being tested, so attempt to generate a file with similar coverage as your sample with a similar number of chromosomes (e.g. 2 for a heterozygote). The only files that need keeping after the chromosomes are simulated are the total files and del.1.bed and dup.1.bed, which contains the information about the simulated CNVs.
 
-    maskFastaFromBed -fi DiNV_CH01M.fa -bed DiNV.sat.fa -fo DiNV_CH01M.fa
+    maskFastaFromBed -fi DiNV_CH01M.fa -bed DiNV.sat.bed -fo DiNV_CH01M.fa.masked
  
     for i in train test
     do
@@ -118,9 +118,9 @@ Following that, we simulated CNVs for a homozygous individual, requiring 1 set o
     for i in train test
     do
     python3 scripts/dudeML.py simReads -fasta DiNV_CH01M.fa -cov 20 -d ${i}_sim -id ${i} -RL 100
-    bwa mem -t 4 DiNV_CH01M.fa.masked ${i}_sim/1_20_1.fq ${i}_sim/1_20_2.fq | samtools view -Shb - | samtools sort - > ${i}_sim/total.bam
+    bwa mem -t 4 DiNV_CH01M.fa.masked ${i}_sim/${i}_20_1.fq ${i}_sim/${i}_20_2.fq | samtools view -Shb - | samtools sort - > ${i}_sim/total.bam
     genomeCoverageBed -d -ibam ${i}_sim/total.bam > ${i}_sim/total.bed
-    python scripts/dudeML.py winStat -i${i}_sim/total.bed -o ${i}_sim/total_50.bed -w 50 -s 50
+    python3 scripts/dudeML.py winStat -i${i}_sim/total.bed -o ${i}_sim/total_50.bed -w 50 -s 50
     done
 
 ## C. Reformatting sample and training datasets.    
