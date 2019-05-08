@@ -104,6 +104,7 @@ We used the provided DiNV virus genome and repeat locations.
 Following that, we simulated CNVs for a homozygous individual, requiring 1 set of chromosomes to be generated. Its important that the training data is as similar as possible to the sample being tested, so attempt to generate a file with similar coverage as your sample with a similar number of chromosomes (e.g. 2 for a heterozygote). The only files that need keeping after the chromosomes are simulated are the total files and del.1.bed and dup.1.bed, which contains the information about the simulated CNVs.
 
     maskFastaFromBed -fi DiNV_CH01M.fa -bed DiNV.sat.bed -fo DiNV_CH01M.fa.masked
+    bwa index DiNV_CH01M.fa.masked
  
     for i in train test
     do
@@ -126,8 +127,8 @@ Following that, we simulated CNVs for a homozygous individual, requiring 1 set o
 ## C. Reformatting sample and training datasets.    
   We then removed repetitive regions, reformatted the data to show the relative coverage of the focal window and the 5 windows on each side. We also prepared the data to filter and extract the regions with known duplications or deletions in training the file. We also labelled CNVs in the test dataset for comparison later. As repetitive regions can be tricky to deal with, we ignored windows with more than 50% of the window masked as an (-c 0.5).
 
-	python3 scripts/dudeML.py fvecTrain -i train_sim/total_50.bed -o train_sim/total_50train.bed -w 50 -TE Dmel_iso1.gff -dups train_sim/dup.1.bed -dels train_sim/del.1.bed  -windows 5 -c 0.5
-	python3 scripts/dudeML.py fvecSample -i test_sim/total_50.bed -w 50 -o test_sim/total_50sample.bed -id test_sim -TE Dmel_iso1.gff -windows 5 -c 0.5
+	python3 scripts/dudeML.py fvecTrain -i train_sim/total_50.bed -o train_sim/total_50train.bed -w 50 -TE DiNV.sat.bed -dups train_sim/dup.1.bed -dels train_sim/del.1.bed  -windows 5 -c 0.5
+	python3 scripts/dudeML.py fvecSample -i test_sim/total_50.bed -w 50 -o test_sim/total_50sample.bed -id test_sim -TE DiNV.sat.bed -windows 5 -c 0.5
 
 ## D. Predicting CNVs using the generated files.  
 Following this, you can create a classifier from one of the training features vector files generated and test out predictions of CNVs in the other file.
