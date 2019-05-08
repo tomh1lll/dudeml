@@ -143,7 +143,7 @@ Alternatively, if multiple training files have been generated, these can be used
     python3 scripts/dudeML.py classify -i training/train_${i}.bed -o training/train_${i}.sav
     done
     
-	python3 scripts/dudeML.py predict -i test_het/total_50sample.bed -t training/ -o test_het/total_50pred_bootstrap.bed -windows 5
+	python3 scripts/dudeML.py predict -i test_het/total_50sample.bed -t training/ -o test_het/total_50pred_bootstrap.bed
 
 ## E. Using real data in dudeML
 Real data with known structural variants can be used as a training set using the following pipeline.
