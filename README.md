@@ -137,6 +137,25 @@ Following this, you can create a classifier from one of the training features ve
 	python3 scripts/dudeML.py predict -i test_sim/total_50sample.bed -t train_sim/total_50train.sav -o test_sim/total_50pred.bed
 
 Alternatively, if multiple training files have been generated, these can be used to bootstrap the predicted CNVs, allowing you to take a consensus estimation of CNVs (much more conservative). In this case, the training file is set as a directory containing the training files.
+    
+    for i in 0
+    do
+    mkdir train_sim/rep_${i}
+    python3 scripts/dudeML.py simCNV -fasta DiNV_CH01M.fa -CNV 50 -d train_sim/rep_${i} -N 1 -c 0.5
+    python3 scripts/dudeML.py simChr -fasta DiNV_CH01M.fa -cnvBed train_sim/rep_${i}/total.1.bed -id ${i} -d train_sim/rep_${i}
+    python3 scripts/dudeML.py simReads -fasta DiNV_CH01M.fa -cov 20 -d train_sim/rep_${i} -id ${i} -RL 100
+    bwa mem -t 4 DiNV_CH01M.fa.masked train_sim/rep_${i}/${i}_20_1.fq train_sim/rep_${i}/${i}_20_2.fq | samtools view -Shb - | samtools sort - > ${i}_sim/rep_${i}/total.bam
+    genomeCoverageBed -d -ibam train_sim/rep_${i}/total.bam > train_sim/rep_${i}/total.bed
+    python3 scripts/dudeML.py winStat -i train_sim/rep_${i}/total.bed -o train_sim/rep_${i}/total_${i}.bed -w 50 -s 50
+    rm train_sim/rep_${i}/${i}_20_1.fq
+    rm train_sim/rep_${i}/${i}_20_2.fq
+    rm train_sim/rep_${i}/total.bed
+    rm train_sim/rep_${i}/total.bam
+    rm train_sim/rep_${i}/DiNV_CH01M_${i}_CNV.fa
+    python3 scripts/dudeML.py fvecTrain -i train_sim/rep_${i}/total_${i}.bed -o train_sim/rep_${i}/train_${i}.bed -w 50 -TE DiNV.sat.bed -dups train_sim/rep_${i}/dup.1.bed -dels train_sim/rep_${i}/del.1.bed -windows 5 -c 0.5
+    python3 scripts/dudeML.py classify -i train_sim/rep_${i}/train_${i}.bed -o train_sim/training/train_${i}.sav
+    rm train_sim/rep_${i}/train_${i}.bed
+    done
 
     for i in {0..99}
     do
