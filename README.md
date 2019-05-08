@@ -134,7 +134,7 @@ Following that, we simulated CNVs for a homozygous individual, requiring 1 set o
 Following this, you can create a classifier from one of the training features vector files generated and test out predictions of CNVs in the other file.
 
 	python3 scripts/dudeML.py classify -i train_sim/total_50train.bed -o train_sim/total_50train.sav
-	python3 scripts/dudeML.py predict -i test_sim/total_50sample.bed -t train_sim/total_50train.sav -o test_sim/total_50pred.bed -windows 5
+	python3 scripts/dudeML.py predict -i test_sim/total_50sample.bed -t train_sim/total_50train.sav -o test_sim/total_50pred.bed
 
 Alternatively, if multiple training files have been generated, these can be used to bootstrap the predicted CNVs, allowing you to take a consensus estimation of CNVs (much more conservative). In this case, the training file is set as a directory containing the training files.
 
