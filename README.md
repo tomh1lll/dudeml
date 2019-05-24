@@ -241,6 +241,7 @@ Following that, we bootstrapped a set of simulated CNVs for a homozygous individ
     rm train_${j}/rep_${i}/train_${i}.bed
     gzip -9 train_${j}/rep_${i}/total_${i}.bed
     done
+    done
 
 Following that, we can make iso1 data to the A4 genome and vice versa, then call CNVs
 
