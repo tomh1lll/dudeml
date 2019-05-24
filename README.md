@@ -117,8 +117,8 @@ Following that, we simulated CNVs for a homozygous individual, requiring 1 set o
     for i in train test
     do
     mkdir ${i}_sim
-    python3 scripts/dudeML.py simCNV -fasta DiNV_CH01M.fa -CNV 50 -d ${i}_sim -N 1
-    python3 scripts/dudeML.py simChr -fasta DiNV_CH01M.fa -cnvBed ${i}_sim/total.1.bed -id ${i} -d ${i}_sim
+    python3 dudeML.py simCNV -fasta DiNV_CH01M.fa -CNV 50 -d ${i}_sim -N 1
+    python3 dudeML.py simChr -fasta DiNV_CH01M.fa -cnvBed ${i}_sim/total.1.bed -id ${i} -d ${i}_sim
     done
 
 ## B. Estimating coverage in training and test data
@@ -126,46 +126,46 @@ Following that, we simulated CNVs for a homozygous individual, requiring 1 set o
   
     for i in train test
     do
-    python3 scripts/dudeML.py simReads -fasta DiNV_CH01M.fa -cov 20 -d ${i}_sim -id ${i} -RL 100
+    python3 dudeML.py simReads -fasta DiNV_CH01M.fa -cov 20 -d ${i}_sim -id ${i} -RL 100
     bwa mem -t 4 DiNV_CH01M.fa.masked ${i}_sim/${i}_20_1.fq ${i}_sim/${i}_20_2.fq | samtools view -Shb - | samtools sort - > ${i}_sim/total.bam
     genomeCoverageBed -d -ibam ${i}_sim/total.bam > ${i}_sim/total.bed
-    python3 scripts/dudeML.py winStat -i${i}_sim/total.bed -o ${i}_sim/total_50.bed -w 50 -s 50
+    python3 dudeML.py winStat -i${i}_sim/total.bed -o ${i}_sim/total_50.bed -w 50 -s 50
     done
 
 ## C. Reformatting sample and training datasets.    
   We then removed repetitive regions, reformatted the data to show the relative coverage of the focal window and the 5 windows on each side. We also prepared the data to filter and extract the regions with known duplications or deletions in training the file. We also labelled CNVs in the test dataset for comparison later. As repetitive regions can be tricky to deal with, we ignored windows with more than 50% of the window masked as an (-c 0.5).
 
-	python3 scripts/dudeML.py fvecTrain -i train_sim/total_50.bed -o train_sim/total_50train.bed -w 50 -TE DiNV.sat.bed -dups train_sim/dup.1.bed -dels train_sim/del.1.bed  -windows 5 -c 0.5
-	python3 scripts/dudeML.py fvecSample -i test_sim/total_50.bed -w 50 -o test_sim/total_50sample.bed -id test_sim -TE DiNV.sat.bed -windows 5 -c 0.5
+	python3 dudeML.py fvecTrain -i train_sim/total_50.bed -o train_sim/total_50train.bed -w 50 -TE DiNV.sat.bed -dups train_sim/dup.1.bed -dels train_sim/del.1.bed  -windows 5 -c 0.5
+	python3 dudeML.py fvecSample -i test_sim/total_50.bed -w 50 -o test_sim/total_50sample.bed -id test_sim -TE DiNV.sat.bed -windows 5 -c 0.5
 
 ## D. Predicting CNVs using the generated files.  
 Following this, you can create a classifier from one of the training features vector files generated and test out predictions of CNVs in the other file.
 
-	python3 scripts/dudeML.py classify -i train_sim/total_50train.bed -o train_sim/total_50train.sav
-	python3 scripts/dudeML.py predict -i test_sim/total_50sample.bed -t train_sim/total_50train.sav -o test_sim/total_50pred.bed
+	python3 dudeML.py classify -i train_sim/total_50train.bed -o train_sim/total_50train.sav
+	python3 dudeML.py predict -i test_sim/total_50sample.bed -t train_sim/total_50train.sav -o test_sim/total_50pred.bed
 
 Alternatively, if multiple training files have been generated, these can be used to bootstrap the predicted CNVs, allowing you to take a consensus estimation of CNVs (much more conservative). In this case, the training file is set as a directory containing the training files.
     
     for i in {0..99}
     do
     mkdir train_sim/rep_${i}
-    python3 scripts/dudeML.py simCNV -fasta DiNV_CH01M.fa -CNV 50 -d train_sim/rep_${i} -N 1 -c 0.5
-    python3 scripts/dudeML.py simChr -fasta DiNV_CH01M.fa -cnvBed train_sim/rep_${i}/total.1.bed -id ${i} -d train_sim/rep_${i}
-    python3 scripts/dudeML.py simReads -fasta DiNV_CH01M.fa -cov 20 -d train_sim/rep_${i} -id ${i} -RL 100
+    python3 dudeML.py simCNV -fasta DiNV_CH01M.fa -CNV 50 -d train_sim/rep_${i} -N 1 -c 0.5
+    python3 dudeML.py simChr -fasta DiNV_CH01M.fa -cnvBed train_sim/rep_${i}/total.1.bed -id ${i} -d train_sim/rep_${i}
+    python3 dudeML.py simReads -fasta DiNV_CH01M.fa -cov 20 -d train_sim/rep_${i} -id ${i} -RL 100
     bwa mem -t 4 DiNV_CH01M.fa.masked train_sim/rep_${i}/${i}_20_1.fq train_sim/rep_${i}/${i}_20_2.fq | samtools view -Shb - | samtools sort - > ${i}_sim/rep_${i}/total.bam
     genomeCoverageBed -d -ibam train_sim/rep_${i}/total.bam > train_sim/rep_${i}/total.bed
-    python3 scripts/dudeML.py winStat -i train_sim/rep_${i}/total.bed -o train_sim/rep_${i}/total_${i}.bed -w 50 -s 50
+    python3 dudeML.py winStat -i train_sim/rep_${i}/total.bed -o train_sim/rep_${i}/total_${i}.bed -w 50 -s 50
     rm train_sim/rep_${i}/${i}_20_1.fq
     rm train_sim/rep_${i}/${i}_20_2.fq
     rm train_sim/rep_${i}/total.bed
     rm train_sim/rep_${i}/total.bam
     rm train_sim/rep_${i}/DiNV_CH01M_${i}_CNV.fa
-    python3 scripts/dudeML.py fvecTrain -i train_sim/rep_${i}/total_${i}.bed -o train_sim/rep_${i}/train_${i}.bed -w 50 -TE DiNV.sat.bed -dups train_sim/rep_${i}/dup.1.bed -dels train_sim/rep_${i}/del.1.bed -windows 5 -c 0.5
-    python3 scripts/dudeML.py classify -i train_sim/rep_${i}/train_${i}.bed -o train_sim/training/train_${i}.sav
+    python3 dudeML.py fvecTrain -i train_sim/rep_${i}/total_${i}.bed -o train_sim/rep_${i}/train_${i}.bed -w 50 -TE DiNV.sat.bed -dups train_sim/rep_${i}/dup.1.bed -dels train_sim/rep_${i}/del.1.bed -windows 5 -c 0.5
+    python3 dudeML.py classify -i train_sim/rep_${i}/train_${i}.bed -o train_sim/training/train_${i}.sav
     rm train_sim/rep_${i}/train_${i}.bed
     done
     
-	python3 scripts/dudeML.py predict -i test_sim/total_50sample.bed -t train_sim/training/ -o test_sim/total_50pred_bootstrap.bed
+	python3 dudeML.py predict -i test_sim/total_50sample.bed -t train_sim/training/ -o test_sim/total_50pred_bootstrap.bed
 
 ## E. Using real data in dudeML
 Real data with known structural variants can be used as a training set using the following pipeline.
