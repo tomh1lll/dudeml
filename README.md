@@ -111,6 +111,9 @@ A type of bed file, containing information on CNVs and copy number if a training
 We used the provided DiNV virus genome and repeat locations.
 Following that, we simulated CNVs for a homozygous individual, requiring 1 set of chromosomes to be generated. Its important that the training data is as similar as possible to the sample being tested, so attempt to generate a file with similar coverage as your sample with a similar number of chromosomes (e.g. 2 for a heterozygote). The only files that need keeping after the chromosomes are simulated are the total files and del.1.bed and dup.1.bed, which contains the information about the simulated CNVs.
 
+    Git clone https://github.com/tomh1lll/dudeml.git
+    cd dudeml
+    
     maskFastaFromBed -fi DiNV_CH01M.fa -bed DiNV.sat.bed -fo DiNV_CH01M.fa.masked
     bwa index DiNV_CH01M.fa.masked
  
@@ -196,33 +199,63 @@ Then the generated training and test sets can be used to find CNVs.
 	
 	python3 dudeML.py predict -i unknownCNV_50_sample.bed -t knownCNV_50_train.bed -o unknownCNV_50_pred.bed
 
-## F. The first few steps using Drosophila melanogaster data.
+## F. Predicting CNVs in two D.melanogaster genomes.
 
-We first downloaded the melanogaster reference genome and masked any repeats on the chromosome.
-* [D. melanogaster genome](https://bit.ly/2K5O2Ft)
+We first downloaded the melanogaster reference genomes for iso-1 and A4
+* [D. melanogaster iso-1 genome](https://bit.ly/2K5O2Ft)
+* [D. melanogaster A4 genome](https://www.ncbi.nlm.nih.gov/genome/47?genome_assembly_id=329004)
 * [Drosophila repeats](https://www.girinst.org/repbase/update/browse.php?type=All&format=FASTA&autonomous=on&division=all&letter=A)
 * [RepeatMasker](http://www.repeatmasker.org)
+and masked any repeats on the chromosomes following download, using the list of Drosophila repeats.
 
-Following that, we simulated CNVs for a homozygous individual, requiring 1 set of chromosomes to be generated. Its important that the training data is as similar as possible to the sample being tested, so attempt to generate a file with similar coverage as your sample with a similar number of chromosomes (e.g. 2 for a heterozygote). The only files that need keeping after the chromosomes are simulated are the total files and del.1.bed and dup.1.bed, which contains the information about the simulated CNVs.
-
-    repeatmasker -pa 4 -gff -gccalc -s -lib repbase.fa fasta/Dmel_iso1.fa
-    bwa index fasta/Dmel_iso1.fa.masked
-    
-    for i in train test
+    mkdir fasta/
+    For i in iso1 A4
     do
-    mkdir ${i}_sim
-    python3 scripts/dudeML.py simCNV -fasta Dmel_iso1.fa.masked -CNV 50 -d ${i}_sim -N 1
-    python3 scripts/dudeML.py simChr -fasta Dmel_iso1.fa -cnvBed ${i}_sim/total.1.bed -d ${i}_sim -id 1
+    mv \*${i}\*.f\*a fasta/Dmel_${i}.fa
+    repeatmasker -pa 4 -gff -gccalc -s -lib repbase.fa fasta/Dmel_${i}.fa
+    bwa index fasta/Dmel_${i}.fa.masked
     done
 
-  We next simulated reads for the custom chromosomes containing CNVs using WGSIM within dudeML and following mapping, used bedtools to calculate coverage per site, we then used a custom python script to find the mean coverage of each chromosome to find the relative coverages of each window. In this case a homozygote was simulated.
-  
-    for i in train test
+Following that, we bootstrapped a set of simulated CNVs for a homozygous individual for each genome, Its important that the training data is as similar as possible to the sample being tested, so attempt to generate a file with similar coverage as your sample with a similar number of chromosomes (e.g. 2 for a heterozygote). The only files that need keeping after the chromosomes are simulated are the total files and del.1.bed and dup.1.bed, which contains the information about the simulated CNVs.
+
+    for j in iso1 A4
     do
-    python3 scripts/dudeML.py simReads -fasta Dmel_iso1.fa -cov 20 -d ${i}_sim -RL 100 -id 1
-    bwa mem -t 4 Dmel_iso1.fa.masked ${i}_sim/1_20_1.fq ${i}_sim/1_20_2.fq | samtools view -Shb - | samtools sort - > ${i}_sim/total.bam
-    genomeCoverageBed -d -ibam ${i}_sim/total.bam > ${i}_sim/total.bed
-    python scripts/dudeML.py winStat -i${i}_sim/total.bed -o ${i}_sim/total_50.bed -w 50 -s 50
+    mkdir train_${j}/training
+    mkdir train_${j}
+    for i in {0..N}
+    do
+    mkdir train_${j}/rep_${i}
+    python3 dudeML.py simCNV -fasta fasta/Dmel_${j}.fa -CNV 50 -d train_${j}/rep_${i} -N 1 -c 0.5 -TE fasta/Dmel_${j}.fa.out.gff
+    python3 dudeML.py simChr -fasta fasta/Dmel_${j}.fa -cnvBed train_${j}/rep_${i}/total.1.bed -id ${j}_${i} -d train_${j}/rep_${i}
+    python3 dudeML.py simReads -fasta fasta/Dmel_${j}.fa -cov 20 -d train_${j}/rep_${i} -id ${j}_${i} -RL 100
+    bwa mem -t 4 fasta/Dmel_${j}.fa.masked train_${j}/rep_${i}/${j}_${i}_20_1.fq train_${j}/rep_${i}/${j}_${i}_20_2.fq | samtools view -Shb - | samtools sort - > train_${j}/rep_${i}/total.bam
+    genomeCoverageBed -d -ibam train_${j}/rep_${i}/total.bam > train_${j}/rep_${i}/total.bed
+    python3 dudeML.py winStat -i train_${j}/rep_${i}/total.bed -o train_${j}/rep_${i}/total_${i}.bed -w 50 -s 50
+    rm train_${j}/rep_${i}/${j}_${i}_20_1.fq
+    rm train_${j}/rep_${i}/${j}_${i}_20_2.fq
+    rm train_${j}/rep_${i}/total.bed
+    rm train_${j}/rep_${i}/total.bam
+    rm train_${j}/rep_${i}/*_CNV.fa
+    python3 dudeML.py fvecTrain -i train_${j}/rep_${i}/total_${i}.bed -o train_${j}/rep_${i}/train_${i}.bed -w 50 -TE fasta/Dmel_${j}.fa.out.gff -dups train_${j}/rep_${i}/dup.1.bed -dels train_${j}/rep_${i}/del.1.bed -windows 5 -c 0.5
+    python3 dudeML.py classify -i train_${j}/rep_${i}/train_${i}.bed -o train_${j}/training/train_${i}.sav
+    rm train_${j}/rep_${i}/train_${i}.bed
+    gzip -9 train_${j}/rep_${i}/total_${i}.bed
     done
 
+Following that, we can make iso1 data to the A4 genome and vice versa, then call CNVs
+
+    mkdir real_data
+    for i in iso1 A4
+    do
+    for j in iso1 A4
+    do
+    bwa mem -t 4 fasta/Dmel_${i}.fa.masked ${i}_1.fastq.gz ${i}_2.fastq.gz | samtools view -Shb - | samtools sort - > real_data/${i}_${j}.bam
+    genomeCoverageBed -d -ibam real_data/${i}_${j}.bam > treal_data/${i}_${j}.bed
+    python3 dudeML.py winStat -i real_data/${i}_${j}.bed -o real_data/${i}_${j}.50.bed -w 50 -s 50
+    python3 dudeML.py fvecSample -i real_data/${i}_${j}.50.bed -w 50 -s 50 -o real_data/${i}_${j}.sample.bed -id ${i}_${j} -TE fasta/Dmel_${j}.fa.out.gff -windows 5 -c 0.5
+    python3 dudeML.py predict -i real_data/${i}_${j}.sample.bed -t train_${j}/training/ -o real_data/${i}_${j}.predict.bed
+    done
+    done
+ 
+This will generate predicted CNVs in iso1 relative to A4 and in A4 relative to iso1. These can be validated next to a known set of CNVs.
 
