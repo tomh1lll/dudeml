@@ -1,5 +1,5 @@
 # dudeML
-A python script for the detection of duplications and deletions using machine learning. Note this tool works on most read data mapped to reference genome e.g. single-end short reads or MinION data, though all examples provided here use 100bp paired end reads.
+A python script for the detection of duplications and deletions using machine learning. This tools is meant to identify small copy number variants within a chromosome with otherwise mostly consistent copy number. Note this tool works on most read data mapped to reference genome e.g. single-end short reads or MinION data, though all examples provided here use 100bp paired end reads.
 
 # 1. Requirements
 A number of programs are required to install. A majority of these can be installed via brew, apt, pip or conda.
