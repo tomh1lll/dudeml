@@ -1,5 +1,6 @@
 # dudeML
 A python script for the detection of duplications and deletions using machine learning. This tools is meant to identify small copy number variants within a chromosome with otherwise mostly consistent copy number. Note this tool works on most read data mapped to reference genome e.g. single-end short reads or MinION data, though all examples provided here use 100bp paired end reads.
+This folder contains two forms of dudeML, one uses split reads and reads with supplementary alignments in
 
 # 1. Requirements
 A number of programs are required to install. A majority of these can be installed via brew, apt, pip or conda.
@@ -23,7 +24,7 @@ this can be done via:
 	conda install -n dudeml wgsim bwa samtools bedtools
 	
 ## Modifications
-Within the script, the directory for bedtools and wgsim need to be set. If both of these tools are within the path, they can be left as they are.
+Within the script, the directory for bedtools and wgsim need to be set. If both of these tools are within the path, they can be left as they are. Depending on which form of dudeML you use, you shoudl rename dudeML_withSplit.py or dudeML_withoutSplit.py to dudeML.py
 
 # 2. Functions
 Subfunctions of the dudeML script, each function provides a specific role and requires differing inputs (described by running the help function of the tool).
@@ -66,20 +67,7 @@ The reference sequences for mapping and for generating training files, in the fo
 >aagagcctatatca
 
 ## BAM files
-A binary file containing short reads mapped to a repeat masked reference genome, used as input for genomeCoverageBed.
-
-## Coverage file
-Generated from a BAM file of reads mapped to the reference fasta file, using the command:
-
-	genomeCoverageBed -d -ibam BAM > BED
-Formatted as chromosome	position	coverage:
->Chr1	1	0
-
->Chr1	2	1
-
->Chr1	3	1
-
->Chr1	4	2
+A binary file containing short reads mapped to a repeat masked reference genome, used as input for genomeCoverageBed within dudeML.
 
 
 ## Duplications
@@ -131,8 +119,7 @@ Following that, we simulated CNVs for a homozygous individual, requiring 1 set o
     do
     python3 dudeML.py simReads -fasta DiNV_CH01M.fa -cov 20 -d ${i}_sim -id ${i} -RL 100
     bwa mem -t 4 DiNV_CH01M.fa.masked ${i}_sim/${i}_20_1.fq ${i}_sim/${i}_20_2.fq | samtools view -Shb - | samtools sort - > ${i}_sim/total.bam
-    genomeCoverageBed -d -ibam ${i}_sim/total.bam > ${i}_sim/total.bed
-    python3 dudeML.py winStat -i${i}_sim/total.bed -o ${i}_sim/total_50.bed -w 50 -s 50
+    python3 dudeML.py winStat -i${i}_sim/total.bam -o ${i}_sim/total_50.bed -w 50 -s 50
     done
 
 ## C. Reformatting sample and training datasets.    
@@ -156,8 +143,7 @@ Alternatively, if multiple training files have been generated, these can be used
     python3 dudeML.py simChr -fasta DiNV_CH01M.fa -cnvBed train_sim/rep_${i}/total.1.bed -id ${i} -d train_sim/rep_${i}
     python3 dudeML.py simReads -fasta DiNV_CH01M.fa -cov 20 -d train_sim/rep_${i} -id ${i} -RL 100
     bwa mem -t 4 DiNV_CH01M.fa.masked train_sim/rep_${i}/${i}_20_1.fq train_sim/rep_${i}/${i}_20_2.fq | samtools view -Shb - | samtools sort - > ${i}_sim/rep_${i}/total.bam
-    genomeCoverageBed -d -ibam train_sim/rep_${i}/total.bam > train_sim/rep_${i}/total.bed
-    python3 dudeML.py winStat -i train_sim/rep_${i}/total.bed -o train_sim/rep_${i}/total_${i}.bed -w 50 -s 50
+    python3 dudeML.py winStat -i train_sim/rep_${i}/total.bam -o train_sim/rep_${i}/total_${i}.bed -w 50 -s 50
     rm train_sim/rep_${i}/${i}_20_1.fq
     rm train_sim/rep_${i}/${i}_20_2.fq
     rm train_sim/rep_${i}/total.bed
@@ -172,17 +158,13 @@ Alternatively, if multiple training files have been generated, these can be used
 
 ## E. Using real data in dudeML
 Real data with known structural variants can be used as a training set using the following pipeline.
-
-	genomeCoverageBed -d -ibam knownCNV.bam > knownCNV.bed
 	
-	python dudeML.py winStat -i knownCNV.bed -o knownCNV_50.bed -w 50
+	python dudeML.py winStat -i knownCNV.bam -o knownCNV_50.bed -w 50
 	python3 dudeML.py fvecTrain -i knownCNV_100.bed -o knownCNV_50.bed -w 50 -TE repeats.gff -dups knownDUP.bed -dels knownDEL.bed -c 0.5
 
 Real data can also be used as the test sample to identify unknown CNVs.
-
-	genomeCoverageBed -d -ibam unknownCNV.bam > unknownCNV.bed
 	
-	python dudeML.py winStat -i unknownCNV.bed -o unknownCNV_50.bed -w 50
+	python dudeML.py winStat -i unknownCNV.bam -o unknownCNV_50.bed -w 50
 	python3 dudeML.py fvecSample -i unknownCNV_50.bed -o unknownCNV_50_sample.bed -w 50 -TE repeats.gff -c 0.5
 
 The deletions and duplications bedfile should have 6 columns, showing the chromosome, start, end, type of CNV, frequency and number of copies of the CNV.
@@ -229,8 +211,7 @@ Following that, we bootstrapped a set of simulated CNVs for a homozygous individ
     python3 dudeML.py simChr -fasta fasta/Dmel_${j}.fa -cnvBed train_${j}/rep_${i}/total.1.bed -id ${j}_${i} -d train_${j}/rep_${i}
     python3 dudeML.py simReads -fasta fasta/Dmel_${j}.fa -cov 20 -d train_${j}/rep_${i} -id ${j}_${i} -RL 100
     bwa mem -t 4 fasta/Dmel_${j}.fa.masked train_${j}/rep_${i}/${j}_${i}_20_1.fq train_${j}/rep_${i}/${j}_${i}_20_2.fq | samtools view -Shb - | samtools sort - > train_${j}/rep_${i}/total.bam
-    genomeCoverageBed -d -ibam train_${j}/rep_${i}/total.bam > train_${j}/rep_${i}/total.bed
-    python3 dudeML.py winStat -i train_${j}/rep_${i}/total.bed -o train_${j}/rep_${i}/total_${i}.bed -w 50 -s 50
+    python3 dudeML.py winStat -i train_${j}/rep_${i}/total.bam -o train_${j}/rep_${i}/total_${i}.bed -w 50 -s 50
     rm train_${j}/rep_${i}/${j}_${i}_20_1.fq
     rm train_${j}/rep_${i}/${j}_${i}_20_2.fq
     rm train_${j}/rep_${i}/total.bed
@@ -251,8 +232,7 @@ Following that, we can make iso1 data to the A4 genome and vice versa, then call
     for j in iso1 A4
     do
     bwa mem -t 4 fasta/Dmel_${i}.fa.masked ${i}_1.fastq.gz ${i}_2.fastq.gz | samtools view -Shb - | samtools sort - > real_data/${i}_${j}.bam
-    genomeCoverageBed -d -ibam real_data/${i}_${j}.bam > treal_data/${i}_${j}.bed
-    python3 dudeML.py winStat -i real_data/${i}_${j}.bed -o real_data/${i}_${j}.50.bed -w 50 -s 50
+    python3 dudeML.py winStat -i real_data/${i}_${j}.bam -o real_data/${i}_${j}.50.bed -w 50 -s 50
     python3 dudeML.py fvecSample -i real_data/${i}_${j}.50.bed -w 50 -s 50 -o real_data/${i}_${j}.sample.bed -id ${i}_${j} -TE fasta/Dmel_${j}.fa.out.gff -windows 5 -c 0.5
     python3 dudeML.py predict -i real_data/${i}_${j}.sample.bed -t train_${j}/training/ -o real_data/${i}_${j}.predict.bed
     done
